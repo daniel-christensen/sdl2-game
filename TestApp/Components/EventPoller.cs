@@ -1,33 +1,31 @@
-﻿using static SDL2.SDL;
+﻿using TestApp.Interfaces;
+using static SDL2.SDL;
 
 namespace TestApp.Components
 {
-    internal class EventPoller
+    internal class EventPoller : IComponent, IRegisterable  
     {
-        internal Configuration Configuration { get; }
-
-        internal GameSystem GameSystem { get; }
+        public Game Game { get; }
 
         private SDL_Event _event;
 
-        internal EventPoller(Configuration configuration, GameSystem gameSystem)
+        public EventPoller(Game game)
         {
-            Configuration = configuration;
-            GameSystem = gameSystem;
+            Game = game;
         }
 
-        internal void Initialise()
+        public void Initialise()
         {
             // TODO
         }
 
-        internal void PollEvents()
+        public void Update()
         {
             while (SDL_PollEvent(out _event) == 1)
             {
                 if (_event.type == SDL_EventType.SDL_QUIT)
                 {
-                    GameSystem.Quit();
+                    Game.IsRunning = false;
                 }
 
                 if (_event.type == SDL_EventType.SDL_KEYDOWN)
@@ -41,6 +39,11 @@ namespace TestApp.Components
                     }
                 }
             }
+        }
+
+        public void CleanUp()
+        {
+            // TODO
         }
     }
 }

@@ -2,45 +2,53 @@
 using TestApp.Messages;
 using Serilog;
 using TestApp.Components;
+using TestApp.Registry;
+using TestApp.Interfaces;
+using TestApp.Collections;
 
 namespace TestApp
 {
     internal class Game
     {
-        internal Configuration Configuration;
+        internal Configuration Configuration { get; }
+            
+        internal bool IsRunning { get; set; }
 
-        internal Graphics Graphics { get; }
-
-        internal EventPoller EventPoller { get; }
-
-        internal GameSystem GameSystem { get; }
+        private ComponentDictionary Components { get; }
 
         private Game()
         {
+            if (!ConsoleManager.IsConsoleAllocated())
+                Log.Information(GameLoggingMessage.GameInstanceWithoutConsole);
+
+            // REGISTRATIONS
+            Components = new ComponentDictionary();
+            RegistryManager.Register<IComponent>(RegistryKey.Component, ComponentKey.EventPoller, typeof(EventPoller));
+            RegistryManager.Register<IComponent>(RegistryKey.Component, ComponentKey.Logic, typeof(Logic));
+            RegistryManager.Register<IComponent>(RegistryKey.Component, ComponentKey.Graphics, typeof(Graphics));
+
+            // ESSENTIAL MANAGER & MISC INITIALISATIONS
+            IsRunning = true;
             Configuration = new Configuration();
-            Graphics = new Graphics(Configuration);
-            GameSystem = new GameSystem(Configuration);
-            EventPoller = new EventPoller(Configuration, GameSystem);
+            Components = new ComponentDictionary
+            {
+                { ComponentKey.EventPoller, RegistryManager.CreateInstance<IComponent>(RegistryKey.Component, ComponentKey.EventPoller, this) },
+                { ComponentKey.Logic, RegistryManager.CreateInstance<IComponent>(RegistryKey.Component, ComponentKey.Logic, this) },
+                { ComponentKey.Graphics, RegistryManager.CreateInstance<IComponent>(RegistryKey.Component, ComponentKey.Graphics, this) }
+            };
         }
 
-        internal void Run()
+        private void Run()
         {
             try
             {
-                // Console is not essential for runtime - just nice to have while debugging.
-                if (!ConsoleManager.IsConsoleAllocated())
-                    Log.Information(GameLoggingMessage.GameInstanceWithoutConsole);
-
                 Initialise();
-                while (GameSystem.IsRunning)
-                {
-                    UpdateLogic();
-                    UpdateDisplay();
-                }
+                while (IsRunning) Update();
             }
             catch (Exception e)
             {
                 Log.Fatal(GameExceptionMessage.FatalUncaught);
+                Log.Fatal(e.Message);
             }
             finally
             {
@@ -50,31 +58,22 @@ namespace TestApp
 
         private void Initialise()
         {
-            Configuration.Initialise();
-            Graphics.Initialise();
-            GameSystem.Initialise();
-            EventPoller.Initialise();
+            Components.Initialise();
         }
 
-        private void UpdateLogic()
+        private void Update()
         {
-            EventPoller.PollEvents();
-        }
-
-        private void UpdateDisplay()
-        {
-            Graphics.Display();
+            Components.Update();
         }
 
         private void CleanUp()
         {
-            Graphics.CleanUp();
-            GameSystem.CleanUp();
+            Components.CleanUp();
         }
 
-        internal static Game NewGame()
+        internal static void NewGame()
         {
-            return new Game();
+            new Game().Run();
         }
     }
 }

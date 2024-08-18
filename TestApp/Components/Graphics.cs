@@ -2,23 +2,24 @@
 using TestApp.Messages;
 using TestApp.Extensions;
 using static SDL2.SDL;
+using TestApp.Interfaces;
 
 namespace TestApp.Components
 {
-    internal class Graphics
+    internal class Graphics : IComponent, IRegisterable
     {
-        internal Configuration Configuration { get; }
+        public Game Game { get; }
 
         private nint _window;
 
         private nint _renderer;
 
-        internal Graphics(Configuration configuration)
+        public Graphics(Game game)
         {
-            Configuration = configuration;
+            Game = game;
         }
 
-        internal void Initialise()
+        public void Initialise()
         {
             if (SDL_Init(SDL_INIT_VIDEO) < 0)
             {
@@ -27,12 +28,12 @@ namespace TestApp.Components
             }
 
             _window = SDL_CreateWindow(
-                Configuration.WindowTitle,
-                Configuration.WindowXPosition,
-                Configuration.WindowYPosition,
-                Configuration.WindowXSize,
-                Configuration.WindowYSize,
-                Configuration.WindowFlags
+                Game.Configuration.WindowTitle,
+                Game.Configuration.WindowXPosition,
+                Game.Configuration.WindowYPosition,
+                Game.Configuration.WindowXSize,
+                Game.Configuration.WindowYSize,
+                Game.Configuration.WindowFlags
             );
 
             if (_window == nint.Zero)
@@ -43,8 +44,8 @@ namespace TestApp.Components
 
             _renderer = SDL_CreateRenderer(
                 _window,
-                Configuration.RendererIndex,
-                Configuration.RendererFlags
+                Game.Configuration.RendererIndex,
+                Game.Configuration.RendererFlags
             );
 
             if (_window == nint.Zero)
@@ -54,7 +55,7 @@ namespace TestApp.Components
             }
         }
 
-        internal void Display()
+        public void Update()
         {
             SDL_SetRenderDrawColor(_renderer, 0, 0, 0, 255);
             SDL_RenderClear(_renderer);
@@ -64,8 +65,8 @@ namespace TestApp.Components
             {
                 x = RectToDraw.x,
                 y = RectToDraw.y,
-                w = Configuration.GridCellXLength,
-                h = Configuration.GridCellYLength
+                w = Game.Configuration.GridCellXLength,
+                h = Game.Configuration.GridCellYLength
             };
             SDL_SetRenderDrawColor(_renderer, 0, 0, 255, 255);
             SDL_RenderFillRect(_renderer, ref rect);
@@ -73,7 +74,7 @@ namespace TestApp.Components
             SDL_RenderPresent(_renderer);
         }
 
-        internal void CleanUp()
+        public void CleanUp()
         {
             SDL_DestroyRenderer(_renderer);
             SDL_DestroyWindow(_window);

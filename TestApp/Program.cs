@@ -1,5 +1,4 @@
-﻿using static SDL2.SDL;
-using TestApp.Helper;
+﻿using TestApp.Helper;
 
 namespace TestApp
 {
@@ -23,7 +22,7 @@ namespace TestApp
 
             ConsoleManager.Initialise();
             LogHelper.Initialise();
-            Game.NewGame().Run();
+            Game.NewGame();
         }
     }
 }
