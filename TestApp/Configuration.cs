@@ -34,8 +34,8 @@ namespace TestApp
 
         private class DefaultValue
         {
-            internal const int DefaultGridCellXLength = 64;
-            internal const int DefaultGridCellYLength = 64;
+            internal const int DefaultGridCellXLength = 32;
+            internal const int DefaultGridCellYLength = 32;
             internal const string DefaultWindowTitle = "My Test SDL2 Application!";
             internal const int DefaultWindowXPosition = SDL_WINDOWPOS_UNDEFINED;
             internal const int DefaultWindowYPosition = SDL_WINDOWPOS_UNDEFINED;

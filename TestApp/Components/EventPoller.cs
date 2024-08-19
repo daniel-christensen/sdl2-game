@@ -32,10 +32,10 @@ namespace TestApp.Components
                 {
                     switch (_event.key.keysym.sym)
                     {
-                        case SDL_Keycode.SDLK_UP: RectToDraw.y -= 10; break;
-                        case SDL_Keycode.SDLK_DOWN: RectToDraw.y += 10; break;
-                        case SDL_Keycode.SDLK_LEFT: RectToDraw.x -= 10; break;
-                        case SDL_Keycode.SDLK_RIGHT: RectToDraw.x += 10; break;
+                        case SDL_Keycode.SDLK_UP: Game.Player.YPosition -= Game.Configuration.GridCellYLength; break;
+                        case SDL_Keycode.SDLK_DOWN: Game.Player.YPosition += Game.Configuration.GridCellYLength; break;
+                        case SDL_Keycode.SDLK_LEFT: Game.Player.XPosition -= Game.Configuration.GridCellXLength; break;
+                        case SDL_Keycode.SDLK_RIGHT: Game.Player.XPosition += Game.Configuration.GridCellXLength; break;
                     }
                 }
             }

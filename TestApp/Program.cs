@@ -2,13 +2,6 @@
 
 namespace TestApp
 {
-    // TO REMOVE
-    internal static class RectToDraw
-    {
-        internal static int x = 0;
-        internal static int y = 0;
-    }
-
     internal class Program
     {
         public static void Main(string[] args)

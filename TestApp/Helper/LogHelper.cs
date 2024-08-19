@@ -8,7 +8,7 @@ namespace TestApp.Helper
     internal static class LogHelper
     {
         // Constants for log configuration
-        private const int _maxLogFiles = 2;
+        private const int _maxLogFiles = 10;
         private const string _logFileExtension = ".log";
         private const string _logDirectory = "logs";
 

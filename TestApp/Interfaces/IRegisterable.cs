@@ -2,5 +2,6 @@
 {
     internal interface IRegisterable
     {
+        internal Game Game { get; }
     }
 }

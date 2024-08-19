@@ -7,11 +7,14 @@ namespace TestApp.Registry
     {
         private static Dictionary<Enum, Type> _registeredComponents = new Dictionary<Enum, Type>();
 
+        private static Dictionary<Enum, Type> _registeredEntities = new Dictionary<Enum, Type>();
+
         private static Dictionary<Enum, Type> GetRegistry(Enum key)
         {
             switch (key)
             {
                 case RegistryKey.Component: return _registeredComponents;
+                case RegistryKey.Entity: return _registeredEntities;
             }
             throw new InvalidOperationException(RegistryExceptionMessage.NonExistentRegistry);
         }
@@ -28,13 +31,13 @@ namespace TestApp.Registry
             registry.Add(subKey, type);
         }
 
-        internal static T CreateInstance<T>(Enum key, Enum subKey, Game game)
+        internal static T CreateInstance<T>(Enum key, Enum subKey, params object[]? cparams)
         {
             var registry = GetRegistry(key);
             if (!registry.ContainsKey(subKey))
                 throw new InvalidOperationException(RegistryExceptionMessage.NonExistentRegistration);
             Type type = registry[subKey];
-            var instance = Activator.CreateInstance(type, [game]);
+            var instance = Activator.CreateInstance(type, cparams);
             if (instance is null)
                 throw new InvalidOperationException(RegistryExceptionMessage.NullInstance);
             return (T)instance;
@@ -43,7 +46,8 @@ namespace TestApp.Registry
 
     internal enum RegistryKey
     {
-        Component
+        Component,
+        Entity
     }
 
     internal enum ComponentKey
@@ -51,5 +55,10 @@ namespace TestApp.Registry
         Graphics,
         Logic,
         EventPoller
+    }
+
+    internal enum EntityKey
+    {
+        Player
     }
 }

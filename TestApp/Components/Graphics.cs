@@ -63,8 +63,8 @@ namespace TestApp.Components
             // Drawing a blue rectangle
             SDL_Rect rect = new SDL_Rect()
             {
-                x = RectToDraw.x,
-                y = RectToDraw.y,
+                x = Game.Player.XPosition,
+                y = Game.Player.YPosition,
                 w = Game.Configuration.GridCellXLength,
                 h = Game.Configuration.GridCellYLength
             };

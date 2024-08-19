@@ -5,6 +5,7 @@ using TestApp.Components;
 using TestApp.Registry;
 using TestApp.Interfaces;
 using TestApp.Collections;
+using TestApp.Entities;
 
 namespace TestApp
 {
@@ -16,16 +17,18 @@ namespace TestApp
 
         private ComponentDictionary Components { get; }
 
+        internal IEntity Player { get; }
+
         private Game()
         {
             if (!ConsoleManager.IsConsoleAllocated())
                 Log.Information(GameLoggingMessage.GameInstanceWithoutConsole);
 
             // REGISTRATIONS
-            Components = new ComponentDictionary();
             RegistryManager.Register<IComponent>(RegistryKey.Component, ComponentKey.EventPoller, typeof(EventPoller));
             RegistryManager.Register<IComponent>(RegistryKey.Component, ComponentKey.Logic, typeof(Logic));
             RegistryManager.Register<IComponent>(RegistryKey.Component, ComponentKey.Graphics, typeof(Graphics));
+            RegistryManager.Register<IEntity>(RegistryKey.Entity, EntityKey.Player, typeof(Player));
 
             // ESSENTIAL MANAGER & MISC INITIALISATIONS
             IsRunning = true;
@@ -36,6 +39,8 @@ namespace TestApp
                 { ComponentKey.Logic, RegistryManager.CreateInstance<IComponent>(RegistryKey.Component, ComponentKey.Logic, this) },
                 { ComponentKey.Graphics, RegistryManager.CreateInstance<IComponent>(RegistryKey.Component, ComponentKey.Graphics, this) }
             };
+
+            Player = RegistryManager.CreateInstance<IEntity>(RegistryKey.Entity, EntityKey.Player, this, 0, 0, true, true);
         }
 
         private void Run()

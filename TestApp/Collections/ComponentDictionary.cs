@@ -1,4 +1,6 @@
-﻿using TestApp.Interfaces;
+﻿using System.Runtime.CompilerServices;
+using System.Windows.Markup;
+using TestApp.Interfaces;
 using TestApp.Messages;
 using TestApp.Registry;
 
