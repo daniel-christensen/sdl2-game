@@ -9,12 +9,15 @@ namespace TestApp.Registry
 
         private static Dictionary<Enum, Type> _registeredEntities = new Dictionary<Enum, Type>();
 
+        private static Dictionary<Enum, Type> _registeredMaps = new Dictionary<Enum, Type>();
+
         private static Dictionary<Enum, Type> GetRegistry(Enum key)
         {
             switch (key)
             {
                 case RegistryKey.Component: return _registeredComponents;
                 case RegistryKey.Entity: return _registeredEntities;
+                case RegistryKey.Map: return _registeredMaps;
             }
             throw new InvalidOperationException(RegistryExceptionMessage.NonExistentRegistry);
         }
@@ -47,7 +50,8 @@ namespace TestApp.Registry
     internal enum RegistryKey
     {
         Component,
-        Entity
+        Entity,
+        Map
     }
 
     internal enum ComponentKey
@@ -59,6 +63,11 @@ namespace TestApp.Registry
 
     internal enum EntityKey
     {
-        Player
+        
+    }
+
+    internal enum MapKey
+    {
+        TestMap
     }
 }

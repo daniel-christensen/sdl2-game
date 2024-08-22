@@ -32,7 +32,7 @@ namespace TestApp
             RendererFlags = DefaultValue.DefaultRendererFlags;
         }
 
-        private class DefaultValue
+        private static class DefaultValue
         {
             internal const int DefaultGridCellXLength = 32;
             internal const int DefaultGridCellYLength = 32;

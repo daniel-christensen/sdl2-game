@@ -4,7 +4,7 @@ namespace TestApp
 {
     internal class Program
     {
-        public static void Main(string[] args)
+        public static void TestMain(string[] args)
         {
             // CODING GUIDLINES
             // 1. "Game" will be the base class, encapsulating all componenets of a game instance

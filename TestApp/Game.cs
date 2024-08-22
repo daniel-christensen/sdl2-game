@@ -5,7 +5,8 @@ using TestApp.Components;
 using TestApp.Registry;
 using TestApp.Interfaces;
 using TestApp.Collections;
-using TestApp.Entities;
+using TestApp.Map;
+using TestApp.Map.Maps;
 
 namespace TestApp
 {
@@ -17,7 +18,9 @@ namespace TestApp
 
         private ComponentDictionary Components { get; }
 
-        internal IEntity Player { get; }
+        internal MapManager MapManager { get; }
+
+        internal TestMap TestMap { get; }
 
         private Game()
         {
@@ -28,7 +31,7 @@ namespace TestApp
             RegistryManager.Register<IComponent>(RegistryKey.Component, ComponentKey.EventPoller, typeof(EventPoller));
             RegistryManager.Register<IComponent>(RegistryKey.Component, ComponentKey.Logic, typeof(Logic));
             RegistryManager.Register<IComponent>(RegistryKey.Component, ComponentKey.Graphics, typeof(Graphics));
-            RegistryManager.Register<IEntity>(RegistryKey.Entity, EntityKey.Player, typeof(Player));
+            RegistryManager.Register<IMap>(RegistryKey.Map, MapKey.TestMap, typeof(TestMap));
 
             // ESSENTIAL MANAGER & MISC INITIALISATIONS
             IsRunning = true;
@@ -40,7 +43,7 @@ namespace TestApp
                 { ComponentKey.Graphics, RegistryManager.CreateInstance<IComponent>(RegistryKey.Component, ComponentKey.Graphics, this) }
             };
 
-            Player = RegistryManager.CreateInstance<IEntity>(RegistryKey.Entity, EntityKey.Player, this, 0, 0, true, true);
+            TestMap = (TestMap)RegistryManager.CreateInstance<IMap>(RegistryKey.Map, MapKey.TestMap, this, TestMap.GetSelfMapData(this));
         }
 
         private void Run()

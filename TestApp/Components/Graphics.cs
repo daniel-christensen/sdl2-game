@@ -3,6 +3,7 @@ using TestApp.Messages;
 using TestApp.Extensions;
 using static SDL2.SDL;
 using TestApp.Interfaces;
+using TestApp.Helper;
 
 namespace TestApp.Components
 {
@@ -57,20 +58,21 @@ namespace TestApp.Components
 
         public void Update()
         {
+            // Black screen
             SDL_SetRenderDrawColor(_renderer, 0, 0, 0, 255);
             SDL_RenderClear(_renderer);
 
-            // Drawing a blue rectangle
-            SDL_Rect rect = new SDL_Rect()
-            {
-                x = Game.Player.XPosition,
-                y = Game.Player.YPosition,
-                w = Game.Configuration.GridCellXLength,
-                h = Game.Configuration.GridCellYLength
-            };
-            SDL_SetRenderDrawColor(_renderer, 0, 0, 255, 255);
-            SDL_RenderFillRect(_renderer, ref rect);
+            // Test Map
+            Game.TestMap.Draw(_renderer);
 
+            // Line Marker
+            SDL_SetRenderDrawColor(_renderer, 0, 0, 255, 255);            
+            SDL_RenderDrawLine(_renderer, (Game.Configuration.WindowXSize / 2) - 1, 0, (Game.Configuration.WindowXSize / 2) - 1, Game.Configuration.WindowYSize - 1);
+            SDL_RenderDrawLine(_renderer, Game.Configuration.WindowXSize / 2, 0, Game.Configuration.WindowXSize / 2, Game.Configuration.WindowYSize - 1);
+            SDL_RenderDrawLine(_renderer, 0, (Game.Configuration.WindowYSize / 2) - 1, Game.Configuration.WindowXSize - 1, (Game.Configuration.WindowYSize / 2) - 1);
+            SDL_RenderDrawLine(_renderer, 0, Game.Configuration.WindowYSize / 2, Game.Configuration.WindowXSize - 1, Game.Configuration.WindowYSize / 2);
+
+            // Present
             SDL_RenderPresent(_renderer);
         }
 
