@@ -1,10 +1,16 @@
-﻿using System.Runtime.InteropServices;
+﻿using SDL2;
+using System.Runtime.InteropServices;
 using Vanara.PInvoke;
 using static SDL2.SDL;
+using static SDL2.SDL_image;
+using static SDL2.SDL_mixer;
 
-namespace TestApp
+namespace LayeredSDL2DemoDirty
 {
-    public class ProgramREFERENCECOPY
+    // https://www.pokencyclopedia.info/en/index.php?id=sprites/gen4/spr_platinum
+    // https://play.pokemonshowdown.com/audio/cries/
+
+    public static class Program
     {
         public static IntPtr window;
 
@@ -18,8 +24,30 @@ namespace TestApp
 
         public static int clickOffsetY = 0;
 
-        public static void Create()
+        public static IntPtr surface;
+
+        public static IntPtr textureA;
+
+        public static IntPtr textureB;
+
+        public static IntPtr soundEffect;
+
+        public static void NotMain(string[] args)
         {
+            // SETUP - Ignoring null/errors
+
+
+
+            if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0)
+            {
+                throw new Exception(SDL_GetError());
+            }
+
+            if (SDL_mixer.Mix_OpenAudio(44100, SDL_mixer.MIX_DEFAULT_FORMAT, 2, 2048) < 0)
+            {
+                throw new Exception(SDL_GetError());
+            }
+
             // get work area and use that as window length and width
             var workArea = new RECT();
             IntPtr workAreaPtr = Marshal.AllocHGlobal(Marshal.SizeOf(workArea));
@@ -78,22 +106,53 @@ namespace TestApp
             // Now that windows has matched our transparent colour key we can show the window
             // This prevent the user ever seeing the window preperation that happens within a split-second
             SDL_ShowWindow(window);
-        }
 
-        public static void Main(string[] args)
-        {
-            Create();
+
+            // img stuff
+            IMG_Init(IMG_InitFlags.IMG_INIT_PNG);
+            string path = "Resources/charmander_1.png";
+            IntPtr surface = IMG_Load(path);
+            if (surface == IntPtr.Zero)
+            {
+                throw new Exception(SDL_GetError());
+            }
+
+            textureA = SDL_CreateTextureFromSurface(renderer, surface);
+
+            path = "Resources/charmander_2.png";
+            surface = IMG_Load(path);
+            if (surface == IntPtr.Zero)
+            {
+                throw new Exception(SDL_GetError());
+            }
+
+            textureB = SDL_CreateTextureFromSurface(renderer, surface);
+
+            SDL_FreeSurface(surface);
+
+            // audio stuff
+            soundEffect = Mix_LoadWAV("Resources/charmander.mp3");
+            if (soundEffect == IntPtr.Zero)
+            {
+                throw new Exception(SDL_GetError());
+            }
+
+            // ------------------------------------------------------------------------------------
 
             // mouse movements
-            bool leftMouseButtonDown = false;
             SDL_Point mouse = new SDL_Point();
+            
 
+            //(int, int) centeredCoords = TestApp.Helper.GraphicsHelper.CalculateRelativeCentreCoordinates(desktopWidth, desktopHeight, 200, 200);
+            x = 0;
+            y = 0;
+            
             SDL_Rect rect1 = new SDL_Rect()
             {
                 x = x,
                 y = y,
-                w = 100,
-                h = 100
+                w = 200,
+                h = 200
             };
 
             bool selected = false;
@@ -144,6 +203,8 @@ namespace TestApp
                                 selected = true;
                                 clickOffsetX = mouse.x - x;
                                 clickOffsetY = mouse.y - y;
+                                if (Mix_Playing(1) == 0)
+                                    Mix_PlayChannel(1, soundEffect, 0);
                             }
                         }
                         break;
@@ -185,16 +246,27 @@ namespace TestApp
                 rect1.x = x;
                 rect1.y = y;
 
+                //if (selected)
+                //    SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
+                //else
+                //    SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
+                //SDL_RenderFillRect(renderer, ref rect1);
+
                 if (selected)
-                    SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
+                    SDL_RenderCopy(renderer, textureB, IntPtr.Zero, ref rect1);
                 else
-                    SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
-                SDL_RenderFillRect(renderer, ref rect1);
+                    SDL_RenderCopy(renderer, textureA, IntPtr.Zero, ref rect1);
                 SDL_RenderPresent(renderer);
             }
 
+            Mix_FreeMusic(soundEffect);
+            SDL_FreeSurface(surface);
             SDL_DestroyRenderer(renderer);
             SDL_DestroyWindow(window);
+
+            Mix_Quit();
+            IMG_Quit();
+            SDL_Quit();
         }
     }
 }
