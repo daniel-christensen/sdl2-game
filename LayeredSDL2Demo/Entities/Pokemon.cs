@@ -1,4 +1,6 @@
-﻿using LayeredSDL2Demo.Interfaces;
+﻿using LayeredSDL2Demo.Helpers;
+using LayeredSDL2Demo.Interfaces;
+using System.Runtime.InteropServices;
 using static SDL2.SDL;
 using static SDL2.SDL_image;
 using static SDL2.SDL_mixer;
@@ -7,6 +9,8 @@ namespace LayeredSDL2Demo.Entities
 {
     internal abstract class Pokemon : IEntity
     {
+        internal Player Player { get; }
+
         public string TextureALocation { get; }
 
         public string TextureBLocation { get; }
@@ -28,6 +32,7 @@ namespace LayeredSDL2Demo.Entities
         public int Height => _rectangle.h;
 
         internal Pokemon(
+            Player player,
             int positionX,
             int positionY,
             int width,
@@ -36,6 +41,7 @@ namespace LayeredSDL2Demo.Entities
             string textureBLocation,
             string cryLocation)
         {
+            Player = player;
             TextureALocation = textureALocation;
             TextureBLocation = textureBLocation;
             CryLocation = cryLocation;
@@ -53,17 +59,14 @@ namespace LayeredSDL2Demo.Entities
         public IEntity LoadTextures(IntPtr renderer)
         {
             // Load texture A into memory
-            IntPtr surface = IMG_Load(TextureALocation);
-            if (surface == IntPtr.Zero) throw new Exception(SDL_GetError());
-            TextureA = SDL_CreateTextureFromSurface(renderer, surface);
-
+            _surfaceA = IMG_Load(TextureALocation);
+            if (_surfaceA == IntPtr.Zero) throw new Exception(SDL_GetError());
+            TextureA = SDL_CreateTextureFromSurface(renderer, _surfaceA);
+            
             // Load texture B into memory
-            surface = IMG_Load(TextureBLocation);
-            if (surface == IntPtr.Zero) throw new Exception(SDL_GetError());
-            TextureB = SDL_CreateTextureFromSurface(renderer, surface);
-
-            // Finished with surface
-            SDL_FreeSurface(surface);
+            _surfaceB = IMG_Load(TextureBLocation);
+            if (_surfaceB == IntPtr.Zero) throw new Exception(SDL_GetError());
+            TextureB = SDL_CreateTextureFromSurface(renderer, _surfaceB);
 
             return this;
         }
@@ -79,13 +82,15 @@ namespace LayeredSDL2Demo.Entities
 
         private bool _selected = false;
 
-        private SDL_Point _mouse = new SDL_Point();
-
         private int _clickOffsetX = 0;
 
         private int _clickOffsetY = 0;
 
         private SDL_Rect _rectangle;
+
+        private IntPtr _surfaceA;
+
+        private IntPtr _surfaceB;
 
         public void PollEvent(SDL_Event sdlEvent)
         {
@@ -93,13 +98,10 @@ namespace LayeredSDL2Demo.Entities
             {
                 case SDL_EventType.SDL_MOUSEMOTION:
                 {
-                    _mouse.x = sdlEvent.motion.x;
-                    _mouse.y = sdlEvent.motion.y;
-
                     if (_selected)
                     {
-                        _rectangle.x = _mouse.x - _clickOffsetX;
-                        _rectangle.y = _mouse.y - _clickOffsetY;
+                        _rectangle.x = Player.Mouse.x - _clickOffsetX;
+                        _rectangle.y = Player.Mouse.y - _clickOffsetY;
                     }
 
                     break;
@@ -107,7 +109,11 @@ namespace LayeredSDL2Demo.Entities
 
                 case SDL_EventType.SDL_MOUSEBUTTONUP:
                 {
-                    _selected = !(sdlEvent.button.button == SDL_BUTTON_LEFT);
+                    if (sdlEvent.button.button == SDL_BUTTON_LEFT)
+                    {
+                        _selected = false;
+                        Player.HandIsFree = true;
+                    }
                     break;
                 }
 
@@ -115,11 +121,16 @@ namespace LayeredSDL2Demo.Entities
                 {
                     if (sdlEvent.button.button == SDL_BUTTON_LEFT)
                     {
-                        if (SDL_PointInRect(ref _mouse, ref _rectangle) == SDL_bool.SDL_TRUE)
+                        bool cursorInSurfaceRect = SDL_PointInRect(ref Player.Mouse, ref _rectangle) == SDL_bool.SDL_TRUE;
+                        bool playerHandIsFree = Player.HandIsFree;
+                        bool pixelIsNotTransparent = GraphicsHelper.CanClickOnPixel(_surfaceA, _rectangle, Player.Mouse);
+
+                        if (cursorInSurfaceRect && playerHandIsFree && pixelIsNotTransparent)
                         {
                             _selected = true;
-                            _clickOffsetX = _mouse.x - PositionX;
-                            _clickOffsetY = _mouse.y - PositionY;
+                            Player.HandIsFree = false;
+                            _clickOffsetX = Player.Mouse.x - PositionX;
+                            _clickOffsetY = Player.Mouse.y - PositionY;
                             if (Mix_Playing(1) == 0)
                                 Mix_PlayChannel(1, Cry, 0);
                         }
@@ -143,6 +154,8 @@ namespace LayeredSDL2Demo.Entities
 
         public void CleanUp()
         {
+            SDL_FreeSurface(_surfaceA);
+            SDL_FreeSurface(_surfaceB);
             SDL_DestroyTexture(TextureA);
             SDL_DestroyTexture(TextureB);
             Mix_FreeChunk(Cry);

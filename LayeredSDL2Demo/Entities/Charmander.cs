@@ -3,11 +3,13 @@
     internal class Charmander : Pokemon
     {
         internal Charmander(
+            Player player,
             int positionX,
             int positionY,
             int width,
             int height)
         : base(
+            player,
             positionX,
             positionY,
             width,

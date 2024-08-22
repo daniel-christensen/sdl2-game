@@ -35,22 +35,12 @@ internal class Program
         // Creating window with SDL_WindowFlags.SDL_WINDOW_HIDDEN doesn't seem to do anything.
         SDL_HideWindow(window);
 
-        // Toggling flags can give creater controls rather than setting via initialisation
-        // HOWEVER, for some reason calling these here instead of passing the flags into the initial window creation
-        // returns the "flickering" effect.
-        // Toggles the SDL_WindowFlags.SDL_WINDOW_BORDERLESS flag for the window
-        //SDL_SetWindowBordered(window, SDL_bool.SDL_FALSE);
-
-        // Toggles the SDL_WindowFlags.SDL_WINDOW_ALWAYS_ON_TOP flag for the window
-        //SDL_SetWindowAlwaysOnTop(window, SDL_bool.SDL_TRUE);
-
         // Accesses the WIN32 API to set our SDL2 window to a Layered Extended Windows Style
         SetWindowExStyleLayered(window);
 
         IntPtr renderer = SDL_CreateRenderer(window, -1, SDL_RendererFlags.SDL_RENDERER_ACCELERATED);
 
-        // Set Hints
-        // Firstly, as mentioned on https://github.com/flibitijibibo/SDL2-CS
+        // As mentioned on https://github.com/flibitijibibo/SDL2-CS
         SDL_SetHint(SDL_HINT_WINDOWS_DISABLE_THREAD_NAMING, "1");
 
         // Allows window focus click to also act as a mouse event
@@ -60,12 +50,15 @@ internal class Program
         SDL_ShowWindow(window);
 
         // ------------------ PREPARE ENTITES ------------------
-        //EntityManager entityManager = new EntityManager();
+        EntityManager entityManager = new EntityManager();
 
-        IEntity myCharizard = new Charizard(0, 0, 200, 200).LoadTextures(renderer).LoadSounds();
-        IEntity myCharmander = new Charmander(300, 300, 200, 200).LoadTextures(renderer).LoadSounds();
+        Player player = new Player();
 
-        //entityManager.Add(myCharizard);
+        IEntity myCharizard = new Charizard(player, 0, 0, 200, 200).LoadTextures(renderer).LoadSounds();
+        IEntity myCharmander = new Charmander(player, 300, 300, 200, 200).LoadTextures(renderer).LoadSounds();
+
+        entityManager.Add(myCharizard);
+        entityManager.Add(myCharmander);
 
         // --------------------- GAME LOOP ---------------------
         try
@@ -83,17 +76,14 @@ internal class Program
                 SDL_SetRenderDrawColor(renderer, 255, 0, 255, 255);
                 SDL_RenderClear(renderer);
 
-                myCharizard.PollEvent(sdlEvent);
-                myCharmander.PollEvent(sdlEvent);
-                myCharizard.Draw(renderer);
-                myCharmander.Draw(renderer);
+                // Poll and Draw all entites
+                player.PollEvent(sdlEvent);
+                entityManager.PollEvents(sdlEvent);
+                entityManager.Draw(renderer);
 
+                // Present buffer
                 SDL_RenderPresent(renderer);
             }
-        }
-        catch (Exception e)
-        {
-            throw e;
         }
         finally
         {
@@ -152,7 +142,6 @@ internal class Program
         User32.SetWindowLong(hWnd, User32.WindowLongFlags.GWL_EXSTYLE, dwNewLong);
 
         // Now that our window is set to the Extended Style of "Layered" we can now use Layered-specific methods
-        // I beieve SetLayeredWindowAttributes() is one of the only methods that come with this style
         // What we are saying here is that any pixel drawn to the window matching the given COLORREF will turn transparent
         COLORREF transparentColorKey = new COLORREF(255, 0, 255);
         User32.SetLayeredWindowAttributes(hWnd, transparentColorKey, 0, User32.LayeredWindowAttributes.LWA_COLORKEY);
