@@ -79,6 +79,7 @@ internal class Program
                 // Poll and Draw all entites
                 player.PollEvent(sdlEvent);
                 entityManager.PollEvents(sdlEvent);
+                entityManager.Logic();
                 entityManager.Draw(renderer);
 
                 // Present buffer

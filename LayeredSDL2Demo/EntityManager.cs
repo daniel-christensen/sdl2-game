@@ -14,6 +14,14 @@ namespace LayeredSDL2Demo
             }
         }
 
+        internal void Logic()
+        {
+            for (int i = Count - 1; i >= 0; i--)
+            {
+                this[i].Logic();
+            }
+        }
+
         internal void Draw(IntPtr renderer)
         {
             foreach (IEntity entity in this)

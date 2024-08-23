@@ -1,6 +1,5 @@
 ﻿using LayeredSDL2Demo.Helpers;
 using LayeredSDL2Demo.Interfaces;
-using System.Runtime.InteropServices;
 using static SDL2.SDL;
 using static SDL2.SDL_image;
 using static SDL2.SDL_mixer;
@@ -92,6 +91,10 @@ namespace LayeredSDL2Demo.Entities
 
         private IntPtr _surfaceB;
 
+        private int _audioChannel = 0;
+
+        private bool _audioPlaying = false;
+
         public void PollEvent(SDL_Event sdlEvent)
         {
             switch (sdlEvent.type)
@@ -131,12 +134,23 @@ namespace LayeredSDL2Demo.Entities
                             Player.HandIsFree = false;
                             _clickOffsetX = Player.Mouse.x - PositionX;
                             _clickOffsetY = Player.Mouse.y - PositionY;
-                            if (Mix_Playing(1) == 0)
-                                Mix_PlayChannel(1, Cry, 0);
+                            if (!_audioPlaying)
+                            {
+                                _audioChannel = Mix_PlayChannel(-1, Cry, 0);
+                                _audioPlaying = true;
+                            }
                         }
                     }
                     break;
                 }
+            }
+        }
+
+        public void Logic()
+        {
+            if (Mix_Playing(_audioChannel) == 0 && _audioPlaying)
+            {
+                _audioPlaying = false;
             }
         }
 

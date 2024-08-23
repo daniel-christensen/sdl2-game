@@ -24,6 +24,8 @@
         
         internal void Draw(IntPtr renderer);
 
+        internal void Logic();
+
         internal void CleanUp();
     }
 }
