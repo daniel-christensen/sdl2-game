@@ -57,21 +57,81 @@ namespace LayeredSDL2Demo.Helpers
             IntPtr pixelAddr = IntPtr.Add(surface.pixels, point.y * surface.pitch + point.x * bpp);
 
             // Assign correct pixel based on bit-wise calculated pixel address
-            uint pixel = bpp switch
-            {
-                //4 => (uint)Marshal.ReadInt32(pixelAddr),
-                //3 => BitConverter.IsLittleEndian ?
-                //     (uint)(Marshal.ReadByte(pixelAddr) | Marshal.ReadByte(pixelAddr, 1) << 8 | Marshal.ReadByte(pixelAddr, 2) << 16) :
-                //     (uint)(Marshal.ReadByte(pixelAddr, 2) | Marshal.ReadByte(pixelAddr, 1) << 8 | Marshal.ReadByte(pixelAddr) << 16),
-                //2 => (uint)Marshal.ReadInt16(pixelAddr),
-                1 => Marshal.ReadByte(pixelAddr),
-                _ => throw new NotSupportedException("Unsupported bit depth.")
-            };
+            uint pixel = GetPixel(pixelAddr, bpp);
 
             // Acquire RGBA values 
             SDL_Color color;
             SDL_GetRGBA(pixel, surface.format, out color.r, out color.g, out color.b, out color.a);
             return color.a > 0;
+        }
+
+        internal static uint GetPixel(IntPtr pixelAddress, int bytesPerPixel)
+        {
+            switch (bytesPerPixel)
+            {
+                case 1:
+                    return Marshal.ReadByte(pixelAddress);
+                //case 2:
+                //    return (uint)Marshal.ReadInt16(pixelAddress);
+                //case 3:
+                //    return BitConverter.IsLittleEndian ?
+                //    (uint)(Marshal.ReadByte(pixelAddress) | Marshal.ReadByte(pixelAddress, 1) << 8 | Marshal.ReadByte(pixelAddress, 2) << 16) :
+                //    (uint)(Marshal.ReadByte(pixelAddress, 2) | Marshal.ReadByte(pixelAddress, 1) << 8 | Marshal.ReadByte(pixelAddress) << 16);
+                //case 4:
+                //    return (uint)Marshal.ReadInt32(pixelAddress);
+            }
+
+            throw new NotSupportedException("Unsupported bit depth.");
+        }
+
+        internal static SDL_Point LastNonTransparentCoordinatesOriginal(IntPtr surfacePtr)
+        {
+            SDL_Surface surface = Marshal.PtrToStructure<SDL_Surface>(surfacePtr);
+            SDL_PixelFormat pixelFormat = Marshal.PtrToStructure<SDL_PixelFormat>(surface.format);
+
+            SDL_Point lastPoint = new SDL_Point();
+
+            for (int y = surface.h - 1; y >= 0; y--)
+            {
+                for (int x = surface.w - 1; x >= 0; x--)
+                {
+                    int bpp = pixelFormat.BytesPerPixel;
+                    IntPtr pixelAddr = IntPtr.Add(surface.pixels, y * surface.pitch + x * bpp);
+                    uint pixel = GetPixel(pixelAddr, bpp);
+                    SDL_Color color;
+                    SDL_GetRGBA(pixel, surface.format, out color.r, out color.g, out color.b, out color.a);
+                    if (color.a > 0)
+                    {
+                        lastPoint.x = x;
+                        lastPoint.y = y;
+                        return lastPoint;
+                    }
+                }
+            }
+
+            return lastPoint;
+        }
+
+        internal static SDL_Point ScaleUpPointToDisplaySize(SDL_Point originalPoint, int scaledWidth, int scaledHeight)
+        {
+            float widthScale = scaledWidth / OriginalWidth;
+            float heightScale = scaledHeight / OriginalHeight;
+            float scaledX = originalPoint.x * widthScale;
+            float scaledY = originalPoint.y * heightScale;
+            return new SDL_Point()
+            {
+                x = (int)Math.Round(scaledX),
+                y = (int)Math.Round(scaledY)
+            };
+        }
+
+        internal static SDL_Point GetRelativePoint(SDL_Point originPoint, SDL_Rect drawableRectange)
+        {
+            return new SDL_Point()
+            {
+                x = originPoint.x + drawableRectange.x,
+                y = originPoint.y + drawableRectange.y
+            };
         }
     }
 }

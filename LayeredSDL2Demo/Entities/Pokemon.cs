@@ -1,5 +1,6 @@
 ﻿using LayeredSDL2Demo.Helpers;
 using LayeredSDL2Demo.Interfaces;
+using System.Runtime.InteropServices;
 using static SDL2.SDL;
 using static SDL2.SDL_image;
 using static SDL2.SDL_mixer;
@@ -22,9 +23,17 @@ namespace LayeredSDL2Demo.Entities
 
         public IntPtr Cry { get; private set; }
 
-        public int PositionX => _rectangle.x;
+        public int PositionX
+        {
+            get => _rectangle.x;
+            set => _rectangle.x = value;
+        }
 
-        public int PositionY => _rectangle.y;
+        public int PositionY
+        {
+            get => _rectangle.y;
+            set => _rectangle.y = value;
+        }
 
         public int Width => _rectangle.w;
 
@@ -32,6 +41,7 @@ namespace LayeredSDL2Demo.Entities
 
         internal Pokemon(
             Player player,
+            IntPtr renderer,
             int positionX,
             int positionY,
             int width,
@@ -53,6 +63,10 @@ namespace LayeredSDL2Demo.Entities
                 w = width,
                 h = height
             };
+
+            LoadTextures(renderer);
+            LoadSounds();
+            CalculateOriginFloorPoint();
         }
 
         public IEntity LoadTextures(IntPtr renderer)
@@ -146,12 +160,45 @@ namespace LayeredSDL2Demo.Entities
             }
         }
 
-        public void Logic()
+        // Point which represents the bottom of the VISIBLE sprite.
+        // From bottom right to upper left. So Y takes priority with the row containing the first displayable pixels
+        // form the bottom. And only then the first X displayable pixel from the right
+        //
+        // Note the origin floor point is reference to a relative position.
+        // Meaning this point represents 0x0 to the width and height of the displayable rectangle, not the screen
+        private SDL_Point _originScaledFloorPoint;
+
+        private void CalculateOriginFloorPoint()
+        {
+            SDL_Point _originFloorPoint = GraphicsHelper.LastNonTransparentCoordinatesOriginal(_surfaceA);
+            _originScaledFloorPoint = GraphicsHelper.ScaleUpPointToDisplaySize(_originFloorPoint, _rectangle.w, _rectangle.h);
+        }
+
+        public void Logic(IntPtr window)
         {
             if (Mix_Playing(_audioChannel) == 0 && _audioPlaying)
             {
                 _audioPlaying = false;
             }
+
+            SDL_Point relativeFloorPoint = GraphicsHelper.GetRelativePoint(_originScaledFloorPoint, _rectangle);
+
+            int windowWidth, windowHeight;
+            SDL_GetWindowSize(window, out windowWidth, out windowHeight);
+            int hopSize = 8;
+            bool isWithinHopSize = (windowHeight - 1) - relativeFloorPoint.y >= hopSize;
+            // Only hop if there is another space for a full hop
+            if (relativeFloorPoint.y < windowHeight - 1 && isWithinHopSize && !_selected)
+                PositionY = PositionY + hopSize;
+
+            // If there isn't enough space for a full hop (because we're near the floor) - calculate the
+            // remaining hop size. This prevents the sprite hoping offscreen then sliding back into frame
+            if (relativeFloorPoint.y < windowHeight - 1 && !isWithinHopSize && !_selected)
+                PositionY = PositionY + ((windowHeight - 1) - relativeFloorPoint.y);
+
+            // Slide back into frame if dragged off screen
+            if (relativeFloorPoint.y > windowHeight - 1 && !_selected)
+                PositionY--;
         }
 
         public void Draw(nint renderer)
@@ -164,6 +211,13 @@ namespace LayeredSDL2Demo.Entities
             {
                 SDL_RenderCopy(renderer, TextureB, IntPtr.Zero, ref _rectangle);
             }
+
+            // Debug Lines            
+            SDL_SetRenderDrawColor(renderer, 255, 1, 255, 255);
+            SDL_RenderDrawLine(renderer, PositionX, PositionY, PositionX + (Width - 1), PositionY);
+            SDL_RenderDrawLine(renderer, PositionX + (Width - 1), PositionY, PositionX + (Width - 1), PositionY + (Height - 1));
+            SDL_RenderDrawLine(renderer, PositionX + (Width - 1), PositionY + (Height - 1), PositionX, PositionY + (Height - 1));
+            SDL_RenderDrawLine(renderer, PositionX, PositionY + (Height - 1), PositionX, PositionY);
         }
 
         public void CleanUp()

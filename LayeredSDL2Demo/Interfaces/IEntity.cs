@@ -24,7 +24,7 @@
         
         internal void Draw(IntPtr renderer);
 
-        internal void Logic();
+        internal void Logic(IntPtr window); // TODO - please don't pass window here, it is retarded
 
         internal void CleanUp();
     }

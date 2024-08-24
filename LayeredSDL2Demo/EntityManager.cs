@@ -14,11 +14,11 @@ namespace LayeredSDL2Demo
             }
         }
 
-        internal void Logic()
+        internal void Logic(IntPtr window)
         {
             for (int i = Count - 1; i >= 0; i--)
             {
-                this[i].Logic();
+                this[i].Logic(window);
             }
         }
 
@@ -27,6 +27,14 @@ namespace LayeredSDL2Demo
             foreach (IEntity entity in this)
             {
                 entity.Draw(renderer);
+            }
+        }
+
+        internal void CleanUp()
+        {
+            foreach (IEntity entity in this)
+            {
+                entity.CleanUp();
             }
         }
     }

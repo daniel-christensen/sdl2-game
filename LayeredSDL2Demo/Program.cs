@@ -16,6 +16,10 @@ namespace LayeredSDL2Demo;
 // Current limitations:
 // 1. Access to WIN32 API transforms the project into windows only (unsure what version)
 //    Most likely win8 due to inability to create layered child windows prior to win8.
+// 2. Window must be borderless when having a layered style. I don't know the specifics, but the surfaces
+//    used to draw the sprites become bugged, as if their Y coordinate was shifted down per surface. Despite seeing
+//    a pixel, the window doesn't treat it as an actual window pixel so you end up clicking through sprites.
+//    The amount of Y pixels shifted seems to match the height of the standard windows mini/max/close border.
 
 internal class Program
 {
@@ -27,7 +31,7 @@ internal class Program
         if (IMG_Init(IMG_InitFlags.IMG_INIT_PNG) != 2) throw new Exception(SDL_GetError());
 
         SDL_Rect desktopAreaWithoutTaskBar = GetWorkArea();
-        IntPtr window = SDL_CreateWindow("Transparent Window", 0, 0, desktopAreaWithoutTaskBar.w, desktopAreaWithoutTaskBar.h, SDL_WindowFlags.SDL_WINDOW_BORDERLESS | SDL_WindowFlags.SDL_WINDOW_ALWAYS_ON_TOP);
+        IntPtr window = SDL_CreateWindow("Transparent Window", 0, 0, desktopAreaWithoutTaskBar.w, desktopAreaWithoutTaskBar.h, SDL_WindowFlags.SDL_WINDOW_BORDERLESS);// | SDL_WindowFlags.SDL_WINDOW_ALWAYS_ON_TOP);
 
         // During the window initiailisation phase, the user will see a split-second flash.
         // This "flicker" is caused by the window starting with a background colour, and then being turned transparent.
@@ -38,7 +42,7 @@ internal class Program
         // Accesses the WIN32 API to set our SDL2 window to a Layered Extended Windows Style
         SetWindowExStyleLayered(window);
 
-        IntPtr renderer = SDL_CreateRenderer(window, -1, SDL_RendererFlags.SDL_RENDERER_ACCELERATED);
+        IntPtr renderer = SDL_CreateRenderer(window, -1, 0);
 
         // As mentioned on https://github.com/flibitijibibo/SDL2-CS
         SDL_SetHint(SDL_HINT_WINDOWS_DISABLE_THREAD_NAMING, "1");
@@ -54,10 +58,12 @@ internal class Program
 
         Player player = new Player();
 
-        IEntity myCharizard = new Charizard(player, 0, 0, 200, 200).LoadTextures(renderer).LoadSounds();
-        IEntity myCharmander = new Charmander(player, 300, 300, 200, 200).LoadTextures(renderer).LoadSounds();
+        IEntity myCharizard = new Charizard(player, renderer, 0, 0, 200, 200);
+        IEntity myCharmeleon = new Charmeleon(player, renderer, 500, 500, 160, 160);
+        IEntity myCharmander = new Charmander(player, renderer, 300, 300, 80, 80);
 
         entityManager.Add(myCharizard);
+        entityManager.Add(myCharmeleon);
         entityManager.Add(myCharmander);
 
         // --------------------- GAME LOOP ---------------------
@@ -73,13 +79,13 @@ internal class Program
 
                 // This colour code matches the COLORREF assigned in the Layered Window Attributes
                 // Beacuse of this, the pixels of this colour are turned transparent
-                SDL_SetRenderDrawColor(renderer, 255, 0, 255, 255);
+                SDL_SetRenderDrawColor(renderer, 255, 0, 255, 0);
                 SDL_RenderClear(renderer);
 
                 // Poll and Draw all entites
                 player.PollEvent(sdlEvent);
                 entityManager.PollEvents(sdlEvent);
-                entityManager.Logic();
+                entityManager.Logic(window);
                 entityManager.Draw(renderer);
 
                 // Present buffer
@@ -88,8 +94,7 @@ internal class Program
         }
         finally
         {
-            myCharizard.CleanUp();
-            myCharmander.CleanUp();
+            entityManager.CleanUp();
             SDL_DestroyRenderer(renderer);
             SDL_DestroyWindow(window);
             Mix_Quit();
