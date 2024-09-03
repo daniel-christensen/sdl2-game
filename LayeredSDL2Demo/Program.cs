@@ -23,6 +23,8 @@ namespace LayeredSDL2Demo;
 
 internal class Program
 {
+    public static IntPtr renderer;
+
     internal static void Main(string[] args)
     {
         // --------------- INITIALISE COMPONENTS ---------------
@@ -42,7 +44,7 @@ internal class Program
         // Accesses the WIN32 API to set our SDL2 window to a Layered Extended Windows Style
         SetWindowExStyleLayered(window);
 
-        IntPtr renderer = SDL_CreateRenderer(window, -1, 0);
+        Program.renderer = SDL_CreateRenderer(window, -1, 0);
 
         // As mentioned on https://github.com/flibitijibibo/SDL2-CS
         SDL_SetHint(SDL_HINT_WINDOWS_DISABLE_THREAD_NAMING, "1");
@@ -58,9 +60,9 @@ internal class Program
 
         Player player = new Player();
 
-        IEntity myCharizard = new Charizard(player, renderer, 0, 0, 200, 200);
-        IEntity myCharmeleon = new Charmeleon(player, renderer, 500, 500, 160, 160);
-        IEntity myCharmander = new Charmander(player, renderer, 300, 300, 80, 80);
+        IEntity myCharizard = new Charizard(player, 0, 0, 200, 200).LoadTextures(renderer).CreateContentRect();
+        IEntity myCharmeleon = new Charmeleon(player, 500, 0, 160, 160).LoadTextures(renderer).CreateContentRect();
+        IEntity myCharmander = new Charmander(player, 0, 0, 80, 80).LoadTextures(renderer).CreateContentRect();
 
         entityManager.Add(myCharizard);
         entityManager.Add(myCharmeleon);
@@ -82,10 +84,15 @@ internal class Program
                 SDL_SetRenderDrawColor(renderer, 255, 0, 255, 0);
                 SDL_RenderClear(renderer);
 
+                int windowWidth, windowHeight;
+                SDL_GetWindowSize(window, out windowWidth, out windowHeight);
+                SDL_SetRenderDrawColor(renderer, 0, 255, 255, 255);
+                SDL_RenderDrawLine(renderer, 0, windowHeight - 200, 1536 - 1, windowHeight - 200);
+
                 // Poll and Draw all entites
                 player.PollEvent(sdlEvent);
                 entityManager.PollEvents(sdlEvent);
-                entityManager.Logic(window);
+                entityManager.UpdateLogic();
                 entityManager.Draw(renderer);
 
                 // Present buffer

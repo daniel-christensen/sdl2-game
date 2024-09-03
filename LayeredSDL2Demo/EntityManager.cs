@@ -14,11 +14,11 @@ namespace LayeredSDL2Demo
             }
         }
 
-        internal void Logic(IntPtr window)
+        internal void UpdateLogic()
         {
             for (int i = Count - 1; i >= 0; i--)
             {
-                this[i].Logic(window);
+                this[i].UpdateLogic();
             }
         }
 

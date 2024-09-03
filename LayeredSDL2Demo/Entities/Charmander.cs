@@ -4,14 +4,12 @@
     {
         internal Charmander(
             Player player,
-            IntPtr renderer,
             int positionX,
             int positionY,
             int width,
             int height)
         : base(
             player,
-            renderer,
             positionX,
             positionY,
             width,

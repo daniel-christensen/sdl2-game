@@ -11,37 +11,48 @@ namespace LayeredSDL2Demo.Entities
     {
         internal Player Player { get; }
 
-        public string TextureALocation { get; }
+        public string TextureAFilePath { get; }
 
-        public string TextureBLocation { get; }
-
-        public string CryLocation { get; }
+        public string TextureBFilePath { get; }
 
         public IntPtr TextureA { get; private set; }
 
         public IntPtr TextureB { get; private set; }
 
+        public string CryFilePath { get; }
+
         public IntPtr Cry { get; private set; }
 
-        public int PositionX
+        private SDL_Rect _textureRect;
+        public int TextureX
         {
-            get => _rectangle.x;
-            set => _rectangle.x = value;
+            get => _textureRect.x;
+            set => _textureRect.x = value;
         }
-
-        public int PositionY
+        public int TextureY
         {
-            get => _rectangle.y;
-            set => _rectangle.y = value;
+            get => _textureRect.y;
+            set => _textureRect.y = value;
         }
+        public int TextureWidth => _textureRect.w;
+        public int TextureHeight => _textureRect.h;
 
-        public int Width => _rectangle.w;
-
-        public int Height => _rectangle.h;
+        private SDL_Rect _contentRect;
+        public int ContentX
+        {
+            get => _contentRect.x;
+            set => _contentRect.x = value;
+        }
+        public int ContentY
+        {
+            get => _contentRect.y;
+            set => _contentRect.y = value;
+        }
+        public int ContentWidth => _contentRect.w;
+        public int ContentHeight => _contentRect.h;
 
         internal Pokemon(
             Player player,
-            IntPtr renderer,
             int positionX,
             int positionY,
             int width,
@@ -51,33 +62,52 @@ namespace LayeredSDL2Demo.Entities
             string cryLocation)
         {
             Player = player;
-            TextureALocation = textureALocation;
-            TextureBLocation = textureBLocation;
-            CryLocation = cryLocation;
+            TextureAFilePath = textureALocation;
+            TextureBFilePath = textureBLocation;
+            CryFilePath = cryLocation;
 
-            // Create Rectangle
-            _rectangle = new SDL_Rect()
+            CreateTextureRect(positionX, positionY, width, height);
+        }
+
+        private IEntity CreateTextureRect(int x, int y, int width, int height)
+        {
+            _textureRect = new SDL_Rect()
             {
-                x = positionX,
-                y = positionY,
+                x = x,
+                y = y,
                 w = width,
                 h = height
             };
 
-            LoadTextures(renderer);
-            LoadSounds();
-            CalculateOriginFloorPoint();
+            return this;
+        }
+
+        public IEntity CreateContentRect()
+        {
+            TextureBoundsAnalyser boundsAnalyser = new TextureBoundsAnalyser(
+                _textureRect.x,
+                _textureRect.y,
+                _textureRect.w,
+                _textureRect.h,
+                Marshal.PtrToStructure<SDL_Surface>(_surfaceA).w,
+                Marshal.PtrToStructure<SDL_Surface>(_surfaceA).h);
+
+            SDL_Surface surface = Marshal.PtrToStructure<SDL_Surface>(_surfaceA);
+            SDL_PixelFormat pixelFormat = Marshal.PtrToStructure<SDL_PixelFormat>(surface.format);
+
+            _contentRect = boundsAnalyser.GetContentRect(surface, pixelFormat);
+            return this;
         }
 
         public IEntity LoadTextures(IntPtr renderer)
         {
             // Load texture A into memory
-            _surfaceA = IMG_Load(TextureALocation);
+            _surfaceA = IMG_Load(TextureAFilePath);
             if (_surfaceA == IntPtr.Zero) throw new Exception(SDL_GetError());
             TextureA = SDL_CreateTextureFromSurface(renderer, _surfaceA);
-            
+
             // Load texture B into memory
-            _surfaceB = IMG_Load(TextureBLocation);
+            _surfaceB = IMG_Load(TextureBFilePath);
             if (_surfaceB == IntPtr.Zero) throw new Exception(SDL_GetError());
             TextureB = SDL_CreateTextureFromSurface(renderer, _surfaceB);
 
@@ -87,7 +117,7 @@ namespace LayeredSDL2Demo.Entities
         public IEntity LoadSounds()
         {
             // Load cry into memory
-            Cry = Mix_LoadWAV(CryLocation);
+            Cry = Mix_LoadWAV(CryFilePath);
             if (Cry == IntPtr.Zero) throw new Exception(SDL_GetError());
 
             return this;
@@ -95,11 +125,13 @@ namespace LayeredSDL2Demo.Entities
 
         private bool _selected = false;
 
-        private int _clickOffsetX = 0;
+        private int _textureClickOffsetX = 0;
 
-        private int _clickOffsetY = 0;
+        private int _textureClickOffsetY = 0;
 
-        private SDL_Rect _rectangle;
+        private int _contentClickOffsetX = 0;
+
+        private int _contentClickOffsetY = 0;
 
         private IntPtr _surfaceA;
 
@@ -117,8 +149,10 @@ namespace LayeredSDL2Demo.Entities
                 {
                     if (_selected)
                     {
-                        _rectangle.x = Player.Mouse.x - _clickOffsetX;
-                        _rectangle.y = Player.Mouse.y - _clickOffsetY;
+                        TextureX = Player.Mouse.x - _textureClickOffsetX;
+                        TextureY = Player.Mouse.y - _textureClickOffsetY;
+                        ContentX = Player.Mouse.x - _contentClickOffsetX;
+                        ContentY = Player.Mouse.y - _contentClickOffsetY;
                     }
 
                     break;
@@ -138,16 +172,29 @@ namespace LayeredSDL2Demo.Entities
                 {
                     if (sdlEvent.button.button == SDL_BUTTON_LEFT)
                     {
-                        bool cursorInSurfaceRect = SDL_PointInRect(ref Player.Mouse, ref _rectangle) == SDL_bool.SDL_TRUE;
+                        bool cursorInSurfaceRect = SDL_PointInRect(ref Player.Mouse, ref _textureRect) == SDL_bool.SDL_TRUE;
                         bool playerHandIsFree = Player.HandIsFree;
-                        bool pixelIsNotTransparent = GraphicsHelper.CanClickOnPixel(_surfaceA, _rectangle, Player.Mouse);
+
+                        TextureBoundsAnalyser boundsAnalyser = new TextureBoundsAnalyser(
+                            _textureRect.x,
+                            _textureRect.y,
+                            _textureRect.w,
+                            _textureRect.h,
+                            Marshal.PtrToStructure<SDL_Surface>(_surfaceA).w,
+                            Marshal.PtrToStructure<SDL_Surface>(_surfaceA).h);
+
+                        bool pixelIsNotTransparent = boundsAnalyser.IsPixelClickable(
+                             Marshal.PtrToStructure<SDL_Surface>(_surfaceA),
+                             Player.Mouse);
 
                         if (cursorInSurfaceRect && playerHandIsFree && pixelIsNotTransparent)
                         {
                             _selected = true;
                             Player.HandIsFree = false;
-                            _clickOffsetX = Player.Mouse.x - PositionX;
-                            _clickOffsetY = Player.Mouse.y - PositionY;
+                            _textureClickOffsetX = Player.Mouse.x - TextureX;
+                            _textureClickOffsetY = Player.Mouse.y - TextureY;
+                            _contentClickOffsetX = Player.Mouse.x - ContentX;
+                            _contentClickOffsetY = Player.Mouse.y - ContentY;
                             if (!_audioPlaying)
                             {
                                 _audioChannel = Mix_PlayChannel(-1, Cry, 0);
@@ -168,24 +215,60 @@ namespace LayeredSDL2Demo.Entities
         // Meaning this point represents 0x0 to the width and height of the displayable rectangle, not the screen
         private SDL_Point _originScaledFloorPoint;
 
-        private void CalculateOriginFloorPoint()
-        {
-            SDL_Point _originFloorPoint = GraphicsHelper.LastNonTransparentCoordinatesOriginal(_surfaceA);
-            _originScaledFloorPoint = GraphicsHelper.ScaleUpPointToDisplaySize(_originFloorPoint, _rectangle.w, _rectangle.h);
-        }
+        //private void CalculateOriginFloorPoint()
+        //{
+        //    SDL_Point _originFloorPoint = GraphicsHelper.LastNonTransparentCoordinatesOriginal(_surfaceA);
+        //    _originScaledFloorPoint = GraphicsHelper.ScaleUpPointToDisplaySize(_originFloorPoint, _rectangle.w, _rectangle.h);
+        //}
 
-        public void Logic(IntPtr window)
+        /*internal const double Gravity = 500;
+        internal const double Elasticity = 0.75;
+        internal const double EnhancedGravity = 1000;
+        internal const double DeltaTime = 1.0 / 60;
+
+        private double _velocity = 0;
+        private double _upVelocity = 0;
+        private bool _belowGround = false;*/
+
+        public void UpdateLogic()
         {
             if (Mix_Playing(_audioChannel) == 0 && _audioPlaying)
             {
                 _audioPlaying = false;
             }
 
-            SDL_Point relativeFloorPoint = GraphicsHelper.GetRelativePoint(_originScaledFloorPoint, _rectangle);
+            /*SDL_Point relativeFloorPoint = GraphicsHelper.GetRelativePoint(_originScaledFloorPoint, _rectangle);
 
             int windowWidth, windowHeight;
             SDL_GetWindowSize(window, out windowWidth, out windowHeight);
-            int hopSize = 8;
+
+            if (relativeFloorPoint.y < windowHeight - 200 && !_selected)
+            {
+                _upVelocity = 0;
+                _velocity += Gravity * DeltaTime;
+                PositionY += (int)Math.Round(_velocity * DeltaTime);
+            }
+
+            if (relativeFloorPoint.y == windowHeight - 200 && !_selected)
+            {
+                PositionY = PositionY + ((windowHeight - 200) - relativeFloorPoint.y);
+            }
+
+            if (relativeFloorPoint.y > windowHeight - 200 && !_selected)
+            {
+                _velocity = 0;
+                _upVelocity += Gravity * DeltaTime;
+                PositionY -= (int)Math.Round(_upVelocity * DeltaTime);
+            }
+
+            /*if (relativeFloorPoint.y < windowHeight - 1 && !_selected)
+            {
+                _acceleration = _force / Mass;
+                _velocity += _acceleration * DeltaTime;
+                _velocity *= Damping;
+            }
+
+            int hopSize = (int)Math.Round(_velocity * DeltaTime);
             bool isWithinHopSize = (windowHeight - 1) - relativeFloorPoint.y >= hopSize;
             // Only hop if there is another space for a full hop
             if (relativeFloorPoint.y < windowHeight - 1 && isWithinHopSize && !_selected)
@@ -193,31 +276,51 @@ namespace LayeredSDL2Demo.Entities
 
             // If there isn't enough space for a full hop (because we're near the floor) - calculate the
             // remaining hop size. This prevents the sprite hoping offscreen then sliding back into frame
-            if (relativeFloorPoint.y < windowHeight - 1 && !isWithinHopSize && !_selected)
-                PositionY = PositionY + ((windowHeight - 1) - relativeFloorPoint.y);
+            //if (relativeFloorPoint.y < windowHeight - 1 && !isWithinHopSize && !_selected)
+            //    PositionY = PositionY + ((windowHeight - 1) - relativeFloorPoint.y);
+
+            // Bounce back into frame if under floor
+            if (relativeFloorPoint.y >= windowHeight - 1)
+            {
+                _velocity = -_velocity * Elasticity;
+                _velocity *= Damping;
+
+                if (Math.Abs(_velocity) < 1)
+                {
+                    _velocity = 0;  // Stop the movement if the bounce is too weak
+                    PositionY = PositionY + ((windowHeight - 1) - relativeFloorPoint.y);  // Ensure the sprite stays at ground level
+                }
+            }
 
             // Slide back into frame if dragged off screen
-            if (relativeFloorPoint.y > windowHeight - 1 && !_selected)
-                PositionY--;
+            //if (relativeFloorPoint.y > windowHeight - 1 && !_selected)
+            //    PositionY--;
+
+            // Set velocity to 0 if on floor
+            //if (relativeFloorPoint.y == windowHeight - 1 && !_selected)
+            //    _velocity = 0;*/
         }
 
         public void Draw(nint renderer)
         {
-            if (!_selected)
-            {
-                SDL_RenderCopy(renderer, TextureA, IntPtr.Zero, ref _rectangle);
-            }
-            else
-            {
-                SDL_RenderCopy(renderer, TextureB, IntPtr.Zero, ref _rectangle);
-            }
-
             // Debug Lines            
             SDL_SetRenderDrawColor(renderer, 255, 1, 255, 255);
-            SDL_RenderDrawLine(renderer, PositionX, PositionY, PositionX + (Width - 1), PositionY);
-            SDL_RenderDrawLine(renderer, PositionX + (Width - 1), PositionY, PositionX + (Width - 1), PositionY + (Height - 1));
-            SDL_RenderDrawLine(renderer, PositionX + (Width - 1), PositionY + (Height - 1), PositionX, PositionY + (Height - 1));
-            SDL_RenderDrawLine(renderer, PositionX, PositionY + (Height - 1), PositionX, PositionY);
+            DebugDrawRect(renderer, _textureRect, new SDL_Color() { r = 255, g = 1, b = 255, a = 255 });
+            DebugDrawRect(renderer, _contentRect, new SDL_Color() { r = 100, g = 50, b = 200, a = 255 });
+
+            if (!_selected)
+                SDL_RenderCopy(renderer, TextureA, IntPtr.Zero, ref _textureRect);
+            else
+                SDL_RenderCopy(renderer, TextureB, IntPtr.Zero, ref _textureRect);
+        }
+
+        private void DebugDrawRect(IntPtr renderer, SDL_Rect rect, SDL_Color drawColor)
+        {
+            SDL_SetRenderDrawColor(renderer, drawColor.r, drawColor.g, drawColor.b, drawColor.a);
+            SDL_RenderDrawLine(renderer, rect.x, rect.y, rect.x + (rect.w - 1), rect.y);
+            SDL_RenderDrawLine(renderer, rect.x + (rect.w - 1), rect.y, rect.x + (rect.w - 1), rect.y + (rect.h - 1));
+            SDL_RenderDrawLine(renderer, rect.x + (rect.w - 1), rect.y + (rect.h - 1), rect.x, rect.y + (rect.h - 1));
+            SDL_RenderDrawLine(renderer, rect.x, rect.y + (rect.h - 1), rect.x, rect.y);
         }
 
         public void CleanUp()

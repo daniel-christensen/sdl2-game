@@ -8,13 +8,23 @@
 
         internal IntPtr Cry { get; }
 
-        internal int PositionX { get; }
+        internal int TextureX { get; }
 
-        internal int PositionY { get; }
+        internal int TextureY { get; }
 
-        internal int Width { get; }
+        internal int TextureWidth { get; }
 
-        internal int Height { get; }
+        internal int TextureHeight { get; }
+
+        internal int ContentX { get; }
+
+        internal int ContentY { get; }
+
+        internal int ContentWidth { get; }
+
+        internal int ContentHeight { get; }
+
+        internal IEntity CreateContentRect();
 
         internal IEntity LoadTextures(IntPtr renderer);
 
@@ -24,7 +34,7 @@
         
         internal void Draw(IntPtr renderer);
 
-        internal void Logic(IntPtr window); // TODO - please don't pass window here, it is retarded
+        internal void UpdateLogic();
 
         internal void CleanUp();
     }
