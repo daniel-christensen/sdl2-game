@@ -1,10 +1,9 @@
 ﻿using static SDL2.SDL;
 using static SDL2.SDL_image;
 using static SDL2.SDL_mixer;
-using Vanara.PInvoke;
-using System.Runtime.InteropServices;
 using LayeredSDL2Demo.Entities;
 using LayeredSDL2Demo.Interfaces;
+using LayeredSDL2Demo.Helpers;
 
 namespace LayeredSDL2Demo;
 
@@ -23,8 +22,6 @@ namespace LayeredSDL2Demo;
 
 internal class Program
 {
-    public static IntPtr renderer;
-
     internal static void Main(string[] args)
     {
         // --------------- INITIALISE COMPONENTS ---------------
@@ -32,7 +29,7 @@ internal class Program
         if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0) throw new Exception(SDL_GetError());
         if (IMG_Init(IMG_InitFlags.IMG_INIT_PNG) != 2) throw new Exception(SDL_GetError());
 
-        SDL_Rect desktopAreaWithoutTaskBar = GetWorkArea();
+        SDL_Rect desktopAreaWithoutTaskBar = LayeredWindowHelper.GetWorkArea();
         IntPtr window = SDL_CreateWindow("Transparent Window", 0, 0, desktopAreaWithoutTaskBar.w, desktopAreaWithoutTaskBar.h, SDL_WindowFlags.SDL_WINDOW_BORDERLESS);// | SDL_WindowFlags.SDL_WINDOW_ALWAYS_ON_TOP);
 
         // During the window initiailisation phase, the user will see a split-second flash.
@@ -42,9 +39,9 @@ internal class Program
         SDL_HideWindow(window);
 
         // Accesses the WIN32 API to set our SDL2 window to a Layered Extended Windows Style
-        SetWindowExStyleLayered(window);
+        LayeredWindowHelper.SetWindowExStyleLayered(window);
 
-        Program.renderer = SDL_CreateRenderer(window, -1, 0);
+        IntPtr renderer = SDL_CreateRenderer(window, -1, 0);
 
         // As mentioned on https://github.com/flibitijibibo/SDL2-CS
         SDL_SetHint(SDL_HINT_WINDOWS_DISABLE_THREAD_NAMING, "1");
@@ -60,13 +57,13 @@ internal class Program
 
         Player player = new Player();
 
-        IEntity myCharizard = new Charizard(player, 0, 0, 200, 200).LoadTextures(renderer).CreateContentRect();
-        IEntity myCharmeleon = new Charmeleon(player, 500, 0, 160, 160).LoadTextures(renderer).CreateContentRect();
-        IEntity myCharmander = new Charmander(player, 0, 0, 80, 80).LoadTextures(renderer).CreateContentRect();
+        //IEntity myCharizard = new Charizard(player, 0, 0, 200, 200).LoadTextures(renderer).LoadSounds().CreateContentRect();
+        IEntity myCharmeleon = new Charmeleon(player, 500, 0, 160, 160).LoadTextures(renderer).LoadSounds().CreateContentRect();
+        //IEntity myCharmander = new Charmander(player, 0, 0, 80, 80).LoadTextures(renderer).LoadSounds().CreateContentRect();
 
-        entityManager.Add(myCharizard);
+        //entityManager.Add(myCharizard);
         entityManager.Add(myCharmeleon);
-        entityManager.Add(myCharmander);
+        //entityManager.Add(myCharmander);
 
         // --------------------- GAME LOOP ---------------------
         try
@@ -75,7 +72,10 @@ internal class Program
             SDL_Event sdlEvent;
             while (run)
             {
+                // Read current SDL2 event
                 SDL_PollEvent(out sdlEvent);
+
+                // Quit if sdl2 event is to quit
                 if (sdlEvent.type == SDL_EventType.SDL_QUIT)
                     run = false;
 
@@ -84,18 +84,13 @@ internal class Program
                 SDL_SetRenderDrawColor(renderer, 255, 0, 255, 0);
                 SDL_RenderClear(renderer);
 
-                int windowWidth, windowHeight;
-                SDL_GetWindowSize(window, out windowWidth, out windowHeight);
-                SDL_SetRenderDrawColor(renderer, 0, 255, 255, 255);
-                SDL_RenderDrawLine(renderer, 0, windowHeight - 200, 1536 - 1, windowHeight - 200);
-
                 // Poll and Draw all entites
                 player.PollEvent(sdlEvent);
                 entityManager.PollEvents(sdlEvent);
                 entityManager.UpdateLogic();
                 entityManager.Draw(renderer);
 
-                // Present buffer
+                // Present all data in renderer buffer
                 SDL_RenderPresent(renderer);
             }
         }
@@ -108,55 +103,5 @@ internal class Program
             IMG_Quit();
             SDL_Quit();
         }
-    }
-
-    internal static SDL_Rect GetWorkArea()
-    {
-        // Create a new instance of the desired struct and Marshal a pointer for it
-        var workArea = new RECT();
-        IntPtr workAreaPtr = Marshal.AllocHGlobal(Marshal.SizeOf(workArea));
-        Marshal.StructureToPtr(workArea, workAreaPtr, true);
-
-        // Call WIN32 API to acquire desired information
-        User32.SystemParametersInfo(User32.SPI.SPI_GETWORKAREA, 0, workAreaPtr, User32.SPIF.None);
-
-        // Marshal the pointer back into a useable structure and free the allocated pointer memory
-        workArea = Marshal.PtrToStructure<RECT>(workAreaPtr);
-        Marshal.FreeHGlobal(workAreaPtr);
-
-        // Convert struct information into a clean SDL structure
-        SDL_Rect rect = new SDL_Rect
-        {
-            x = workArea.Left,
-            y = workArea.Top,
-            w = workArea.Width,
-            h = workArea.Height
-        };
-
-        return rect;
-    }
-
-    internal static void SetWindowExStyleLayered(IntPtr window)
-    {
-        // Retrieve system information on window, including native WIN32 window handler
-        SDL_SysWMinfo wmInfo = new SDL_SysWMinfo();
-        SDL_VERSION(out wmInfo.version);
-        SDL_GetWindowWMInfo(window, ref wmInfo);
-        IntPtr hWnd = wmInfo.info.win.window;
-
-        // Acquire the system long which describes characteristics of our window
-        IntPtr dwNewLong = User32.GetWindowLong(hWnd, User32.WindowLongFlags.GWL_EXSTYLE);
-
-        // Bit shift the long to enabled our Extended Layered Style
-        // From what I understand, this is the only style that lets us create transparent backgrounds
-        dwNewLong = dwNewLong | (IntPtr)User32.WindowStylesEx.WS_EX_LAYERED;
-
-        // Now set that long back onto the same window handler with reference to our Extended Style
-        User32.SetWindowLong(hWnd, User32.WindowLongFlags.GWL_EXSTYLE, dwNewLong);
-
-        // Now that our window is set to the Extended Style of "Layered" we can now use Layered-specific methods
-        // What we are saying here is that any pixel drawn to the window matching the given COLORREF will turn transparent
-        COLORREF transparentColorKey = new COLORREF(255, 0, 255);
-        User32.SetLayeredWindowAttributes(hWnd, transparentColorKey, 0, User32.LayeredWindowAttributes.LWA_COLORKEY);
     }
 }

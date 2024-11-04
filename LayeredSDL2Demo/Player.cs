@@ -1,5 +1,4 @@
 ﻿using static SDL2.SDL;
-using static Vanara.PInvoke.User32;
 
 namespace LayeredSDL2Demo
 {

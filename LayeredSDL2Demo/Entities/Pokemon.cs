@@ -1,4 +1,5 @@
-﻿using LayeredSDL2Demo.Helpers;
+﻿using LayeredSDL2Demo.Events;
+using LayeredSDL2Demo.Helpers;
 using LayeredSDL2Demo.Interfaces;
 using System.Runtime.InteropServices;
 using static SDL2.SDL;
@@ -67,6 +68,8 @@ namespace LayeredSDL2Demo.Entities
             CryFilePath = cryLocation;
 
             CreateTextureRect(positionX, positionY, width, height);
+
+            MouseMotionEvent += MouseMotionEvents.HandleDragAndDrop;
         }
 
         private IEntity CreateTextureRect(int x, int y, int width, int height)
@@ -84,16 +87,16 @@ namespace LayeredSDL2Demo.Entities
 
         public IEntity CreateContentRect()
         {
+            SDL_Surface surface = Marshal.PtrToStructure<SDL_Surface>(_surfaceA);
+            SDL_PixelFormat pixelFormat = Marshal.PtrToStructure<SDL_PixelFormat>(surface.format);
+
             TextureBoundsAnalyser boundsAnalyser = new TextureBoundsAnalyser(
                 _textureRect.x,
                 _textureRect.y,
                 _textureRect.w,
                 _textureRect.h,
-                Marshal.PtrToStructure<SDL_Surface>(_surfaceA).w,
-                Marshal.PtrToStructure<SDL_Surface>(_surfaceA).h);
-
-            SDL_Surface surface = Marshal.PtrToStructure<SDL_Surface>(_surfaceA);
-            SDL_PixelFormat pixelFormat = Marshal.PtrToStructure<SDL_PixelFormat>(surface.format);
+                surface.w,
+                surface.h);
 
             _contentRect = boundsAnalyser.GetContentRect(surface, pixelFormat);
             return this;
@@ -141,23 +144,29 @@ namespace LayeredSDL2Demo.Entities
 
         private bool _audioPlaying = false;
 
+        internal delegate void MouseMotionEventHandler(object sender, MouseMotionEventArgs e);
+
+        internal event MouseMotionEventHandler MouseMotionEvent;
+
         public void PollEvent(SDL_Event sdlEvent)
         {
+            var mouseMotionEventArgs = new MouseMotionEventArgs();
+            mouseMotionEventArgs.SdlEvent = sdlEvent;
+            mouseMotionEventArgs.TextureX = TextureX;
+            mouseMotionEventArgs.TextureY = TextureY;
+            mouseMotionEventArgs.ContentX = ContentX;
+            mouseMotionEventArgs.ContentY = ContentY;
+            mouseMotionEventArgs.TextureClickOffsetX = _textureClickOffsetX;
+            mouseMotionEventArgs.TextureClickOffsetY = _textureClickOffsetY;
+            mouseMotionEventArgs.ContentClickOffsetX = _contentClickOffsetX;
+            mouseMotionEventArgs.ContentClickOffsetY = _contentClickOffsetY;
+            mouseMotionEventArgs.Selected = _selected;
+            mouseMotionEventArgs.MouseX = Player.Mouse.x;
+            mouseMotionEventArgs.MouseY = Player.Mouse.y;
+            MouseMotionEvent.Invoke(this, mouseMotionEventArgs);
+
             switch (sdlEvent.type)
             {
-                case SDL_EventType.SDL_MOUSEMOTION:
-                {
-                    if (_selected)
-                    {
-                        TextureX = Player.Mouse.x - _textureClickOffsetX;
-                        TextureY = Player.Mouse.y - _textureClickOffsetY;
-                        ContentX = Player.Mouse.x - _contentClickOffsetX;
-                        ContentY = Player.Mouse.y - _contentClickOffsetY;
-                    }
-
-                    break;
-                }
-
                 case SDL_EventType.SDL_MOUSEBUTTONUP:
                 {
                     if (sdlEvent.button.button == SDL_BUTTON_LEFT)
@@ -305,22 +314,13 @@ namespace LayeredSDL2Demo.Entities
         {
             // Debug Lines            
             SDL_SetRenderDrawColor(renderer, 255, 1, 255, 255);
-            DebugDrawRect(renderer, _textureRect, new SDL_Color() { r = 255, g = 1, b = 255, a = 255 });
-            DebugDrawRect(renderer, _contentRect, new SDL_Color() { r = 100, g = 50, b = 200, a = 255 });
+            DebugDrawFunctions.DebugDrawRect(renderer, _textureRect, new SDL_Color() { r = 255, g = 1, b = 255, a = 255 });
+            DebugDrawFunctions.DebugDrawRect(renderer, _contentRect, new SDL_Color() { r = 100, g = 50, b = 200, a = 255 });
 
             if (!_selected)
                 SDL_RenderCopy(renderer, TextureA, IntPtr.Zero, ref _textureRect);
             else
                 SDL_RenderCopy(renderer, TextureB, IntPtr.Zero, ref _textureRect);
-        }
-
-        private void DebugDrawRect(IntPtr renderer, SDL_Rect rect, SDL_Color drawColor)
-        {
-            SDL_SetRenderDrawColor(renderer, drawColor.r, drawColor.g, drawColor.b, drawColor.a);
-            SDL_RenderDrawLine(renderer, rect.x, rect.y, rect.x + (rect.w - 1), rect.y);
-            SDL_RenderDrawLine(renderer, rect.x + (rect.w - 1), rect.y, rect.x + (rect.w - 1), rect.y + (rect.h - 1));
-            SDL_RenderDrawLine(renderer, rect.x + (rect.w - 1), rect.y + (rect.h - 1), rect.x, rect.y + (rect.h - 1));
-            SDL_RenderDrawLine(renderer, rect.x, rect.y + (rect.h - 1), rect.x, rect.y);
         }
 
         public void CleanUp()
